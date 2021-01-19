@@ -3,6 +3,8 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Printing;
 using BitMiracle.Docotic.Pdf;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace BitMiracle.Docotic.Pdf.Samples
 {
@@ -10,7 +12,7 @@ namespace BitMiracle.Docotic.Pdf.Samples
     {
         private readonly PrintDocument m_printDocument;
         private readonly PrintSize m_printSize;
-
+        private List<PaperSize> m_paperSizeCache;
         private PdfDocument m_pdf;
 
         private PrintAction m_printAction;
@@ -95,7 +97,19 @@ namespace BitMiracle.Docotic.Pdf.Samples
             // Printer settings for orientation are ignored in this sample.
             PdfSize pageSize = getPageSizeInPoints(page);
             e.PageSettings.Landscape = pageSize.Width > pageSize.Height;
-
+            //set page paper size
+            var pageHeightHundredthInches = (int)(pageSize.Height * 0.0138889 * 100);
+            var pageWidthHundredthInches = (int)(pageSize.Width * 0.0138889 * 100);
+            m_paperSizeCache = m_paperSizeCache ?? m_printDocument.PrinterSettings.PaperSizes.Cast<PaperSize>().ToList();
+            var pageToleranceInches = .05;
+            var matchingSize = m_paperSizeCache.Where(z => Math.Abs(z.Width - pageWidthHundredthInches) < pageToleranceInches && Math.Abs(z.Height - pageHeightHundredthInches) < pageToleranceInches).OrderBy(z => Math.Abs(pageHeightHundredthInches*pageWidthHundredthInches) - (z.Height * z.Width)).FirstOrDefault();
+            if(matchingSize != null)
+            {
+                e.PageSettings.PaperSize = matchingSize;
+            }
+            else { 
+                e.PageSettings.PaperSize = new PaperSize(pageWidthHundredthInches.ToString() + "x" + pageHeightHundredthInches, pageWidthHundredthInches,pageHeightHundredthInches );
+            }
             m_printableAreaInPoints = getPrintableAreaInPoints(e.PageSettings);
         }
 
